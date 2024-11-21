@@ -11,4 +11,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ReservNow.ServiceLayer\ReservNow.ServiceLayer.csproj" />
+  </ItemGroup>
+
 </Project>

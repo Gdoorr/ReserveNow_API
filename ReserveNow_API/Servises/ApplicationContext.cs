@@ -31,7 +31,7 @@ namespace ReserveNow_API.Servises
             modelBuilder.Entity<Administration>().HasKey(p => p.ID);
             modelBuilder.Entity<Table_reservation>().HasKey(p => p.ID);
             modelBuilder.Entity<City>().HasOne(u => u.Clients).WithOne(p => p.City).HasForeignKey<Clients>(p => p.CityKey);
-            modelBuilder.Entity<City>().HasOne(u => u.Clients).WithOne(p => p.City).HasForeignKey<Administration>(p => p.CityKey);
+            modelBuilder.Entity<City>().HasOne(u => u.Administration).WithOne(p => p.City).HasForeignKey<Administration>(p => p.CityKey);
             modelBuilder.Entity<Organization>().HasOne(u => u.Administrations).WithOne(p => p.Organizations).HasForeignKey<Administration>(p => p.OrganizationKey);
             modelBuilder.Entity<Table_reservation>().HasOne(u => u.Administrations).WithOne(p => p.Table_reservations).HasForeignKey<Administration>(p => p.Table_reservationKey);
         }
