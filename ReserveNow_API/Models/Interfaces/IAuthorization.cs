@@ -5,6 +5,9 @@ namespace ReserveNow_API.Models.Interfaces
 {
     public interface IAuthorization
     {
-        public string GenerateToken(string username);
+        string GenerateToken(string userId, string role);
+        string RefreshToken(string oldToken);
+        Clients FindUserByUsername(string email);
+        bool VerifyPassword(Clients user, string password);
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using static ReserveNow_API.AuthOptions;
 using ReserveNow_API;
 using System.Text;
+using ReserveNow_API.Models.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -17,6 +18,7 @@ var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
 builder.Services.AddDbContext<ApplicationContext>();
 builder.Services.AddControllers();
+builder.Services.AddScoped<Clients>();
 builder.Services.AddScoped<IAuthorization, Authorization>();
 
 builder.Services.AddEndpointsApiExplorer();

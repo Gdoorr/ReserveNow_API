@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using ReserveNow_API.Models;
 using ReserveNow_API.Models.Classes;
 using ReserveNow_API.Models.Interfaces;
 using ReserveNow_API.Servises;
+using System.Net;
+using System.Security.Claims;
 
 namespace ReserveNow_API.Controllers
 {
@@ -21,16 +24,45 @@ namespace ReserveNow_API.Controllers
             _app = app;
         }
         [HttpPost("login")]
-        public async Task<ActionResult> Login([FromBody] Clients client)
+        public IActionResult Login([FromBody] Clients client)
         {
-            var person = _app.Client.FirstOrDefault(x=>x.Email==client.Email&&x.Password==client.Password);
-            if (person!=null)
+            //if (string.IsNullOrEmpty(client.Email) || string.IsNullOrEmpty(client.Password))
+            //{
+            //    return BadRequest(new { Message = "Username and password are required." });
+            //}
+
+            // Поиск пользователя в базе данных
+            var user = _auth.FindUserByUsername(client.Email);
+
+            if (user == null)
             {
-                var token = _auth.GenerateToken(client.Email);
-                return Ok(new { Token = token });
+                return Unauthorized(new { Message = "Invalid username or password." });
             }
 
-            return Unauthorized(new { Message = "Неверные учётные данные." });
+            // Проверка пароля
+            if (!_auth.VerifyPassword(user, client.Password))
+            {
+                return Unauthorized(new { Message = "Invalid username or password." });
+            }
+
+            // Генерация JWT-токена
+            var token = _auth.GenerateToken(user.ID.ToString(), user.Role);
+
+            return Ok(new { Token = token });
+        }
+
+        [HttpPost("refresh-token")]
+        public IActionResult Refresh([FromBody] RefreshTokenModel model)
+        {
+            try
+            {
+                var newToken = _auth.RefreshToken(model.OldToken);
+                return Ok(new { Token = newToken });
+            }
+            catch (SecurityTokenException ex)
+            {
+                return Unauthorized(new { Message = ex.Message });
+            }
         }
     }
 }
