@@ -7,7 +7,7 @@ namespace ReserveNow_API.Models.Interfaces
     {
         string GenerateToken(string userId, string role);
         string RefreshToken(string oldToken);
-        Clients FindUserByUsername(string email);
-        bool VerifyPassword(Clients user, string password);
+        Client FindUserByUsername(string email);
+        bool VerifyPassword(Client user, string password);
     }
 }

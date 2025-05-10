@@ -39,6 +39,7 @@ namespace ReserveNow_API.Servises
             _audience = _config["JwtSettings:Audience"];
             _tokenLifetimeDays = int.Parse(_config["JwtSettings:TokenLifetimeDays"]);
         }
+
         public string GenerateToken(string userId, string role)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
@@ -96,12 +97,12 @@ namespace ReserveNow_API.Servises
                 throw new SecurityTokenException("Invalid or expired token.", ex);
             }
         }
-        public Clients FindUserByUsername(string email)
+        public Client FindUserByUsername(string email)
         {
             return db.Client.FirstOrDefault(u => u.Email == email);
         }
 
-        public bool VerifyPassword(Clients user, string password)
+        public bool VerifyPassword(Client user, string password)
         { 
             if (user == null) return false;
 

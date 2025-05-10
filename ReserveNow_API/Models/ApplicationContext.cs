@@ -1,18 +1,21 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ReserveNow_API.Models.Classes;
 using System.Numerics;
-using ReserveNow_API.Configuration;
-using ReserveNow_API.Models.Classes;
 
 namespace ReserveNow_API.Models
 {
     public class ApplicationContext : DbContext
     {
-        public DbSet<City> Cities { get; set; } = null!;
-        public DbSet<Clients> Client { get; set; } = null!;
-        public DbSet<Organization> Organizations { get; set; } = null!;
-        public DbSet<Table_reservation> Table_Reservations { get; set; } = null!;
-        public DbSet<Administration> Administrations { get; set; } = null!;
+        public DbSet<Client> Client { get; set; }
+        public DbSet<Restaurant> Restaurants { get; set; }
+        public DbSet<Table> Tables { get; set; }
+        public DbSet<Reservation> Reservations { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<Menu> Menus { get; set; }
+        public DbSet<City> Cities { get; set; }
+        public DbSet<RefreshTokenModel> RefreshTokens { get; set; }
+        //public DbSet<ResetPasswordRequest> Reset { get; set; }
+        //public DbSet<ForgotPasswordRequest> Forgot { get; set; }
 
         public ApplicationContext()
         {
@@ -28,15 +31,48 @@ namespace ReserveNow_API.Models
             base.OnModelCreating(modelBuilder);
 
 
-            modelBuilder.Entity<Clients>().HasKey(p => p.ID);
+            modelBuilder.Entity<Client>().HasKey(p => p.ID);
             modelBuilder.Entity<City>().HasKey(p => p.ID);
-            modelBuilder.Entity<Organization>().HasKey(p => p.ID);
-            modelBuilder.Entity<Administration>().HasKey(p => p.ID);
-            modelBuilder.Entity<Table_reservation>().HasKey(p => p.ID);
-            modelBuilder.Entity<City>().HasMany(u => u.Clients).WithOne(p => p.City).HasForeignKey(p => p.CityKey);
-            modelBuilder.Entity<City>().HasMany(u => u.Administration).WithOne(p => p.City).HasForeignKey(p => p.CityKey);
-            modelBuilder.Entity<Organization>().HasMany(u => u.Administrations).WithOne(p => p.Organizations).HasForeignKey(p => p.OrganizationKey);
-            modelBuilder.Entity<Table_reservation>().HasMany(u => u.Administrations).WithOne(p => p.Table_reservations).HasForeignKey(p => p.Table_reservationKey);
+            modelBuilder.Entity<Menu>().HasKey(p => p.ID);
+            modelBuilder.Entity<Reservation>().HasKey(p => p.ID);
+            modelBuilder.Entity<Review>().HasKey(p => p.ID);
+            modelBuilder.Entity<Table>().HasKey(p => p.ID);
+            modelBuilder.Entity<Restaurant>().HasKey(p => p.ID);
+            modelBuilder.Entity<Restaurant>()
+                .HasOne(r => r.City)
+                .WithMany(c => c.Restaurants)
+                .HasForeignKey(r => r.CityId);
+
+            // Остальные связи остаются без изменений
+            modelBuilder.Entity<Table>()
+                .HasOne(t => t.Restaurant)
+                .WithMany(r => r.Tables)
+                .HasForeignKey(t => t.RestaurantId);
+
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.Client)
+                .WithMany(u => u.Reservations)
+                .HasForeignKey(r => r.UserId);
+
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.Table)
+                .WithMany(t => t.Reservations)
+                .HasForeignKey(r => r.TableId);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Client)
+                .WithMany(u => u.Reviews)
+                .HasForeignKey(r => r.UserId);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Restaurant)
+                .WithMany(rest => rest.Reviews)
+                .HasForeignKey(r => r.RestaurantId);
+
+            modelBuilder.Entity<Menu>()
+                .HasOne(m => m.Restaurant)
+                .WithMany(r => r.Menus)
+                .HasForeignKey(m => m.RestaurantId);
         }
     }
 }

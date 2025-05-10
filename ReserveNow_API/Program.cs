@@ -13,13 +13,17 @@ using ReserveNow_API.Models.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+var secretKey = jwtSettings["SecretKey"]; 
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
 builder.Services.AddDbContext<ApplicationContext>();
 builder.Services.AddControllers();
-builder.Services.AddScoped<Clients>();
+builder.Services.AddScoped<Client>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<IAuthorization, Authorization>();
+builder.Services.AddScoped<IRestaurantService, RestaurantService>();
+builder.Services.AddTransient<IEmailService, EmailService>();
+
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -44,15 +48,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                             ClockSkew = TimeSpan.Zero // ”читывать разницу времени между серверами
                         };
                     });
-
+//builder.WebHost.UseUrls("http://0.0.0.0:5000");
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5000); // ѕрослушивать порт 5000 на всех интерфейсах
+});
 // ƒобавление CORS (пример)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", builder =>
+    //options.AddPolicy("CorsPolicy", builder =>
+    //{
+    //    builder.AllowAnyOrigin() // или конкретный origin
+    //           .AllowAnyMethod()
+    //           .AllowAnyHeader();
+    //});
+    //options.AddPolicy("AllowLocalhost", policy =>
+    //{
+    //    policy.WithOrigins("http://localhost:5000") // ”кажите порт вашего клиента
+    //          .AllowAnyMethod()
+    //          .AllowAnyHeader();
+    //});
+    options.AddPolicy("AllowAll", policy =>
     {
-        builder.AllowAnyOrigin() // или конкретный origin
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -66,8 +86,9 @@ if (app.Environment.IsDevelopment())
 }
 
 //app.UseMvcWithDefaultRoute(); // не требуетс€ в данном случае
-app.UseCors("CorsPolicy"); // если нужен CORS
+ // если нужен CORS
 app.UseRouting();
+app.UseCors("AllowAll");
 app.UseAuthentication(); // !! јвторизаци€ после маршрутизации
 app.UseAuthorization(); // !! и перед сопоставлением контроллеров
 
