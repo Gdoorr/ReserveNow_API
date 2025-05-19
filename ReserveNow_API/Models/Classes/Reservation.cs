@@ -7,7 +7,8 @@
         public int RestaurantId { get; set; }
         public int TableId { get; set; }
         public DateTime Date { get; set; }
-        public TimeSpan Time { get; set; }
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
         public int Guests { get; set; }
         public string Status { get; set; } = "pending";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

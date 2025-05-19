@@ -10,6 +10,7 @@ using static ReserveNow_API.AuthOptions;
 using ReserveNow_API;
 using System.Text;
 using ReserveNow_API.Models.Classes;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -18,6 +19,11 @@ var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
 builder.Services.AddDbContext<ApplicationContext>();
 builder.Services.AddControllers();
+    //.AddJsonOptions(options =>
+    //{
+    //    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+    //    options.JsonSerializerOptions.WriteIndented = true; // Optional: For pretty-printed JSON
+    //});
 builder.Services.AddScoped<Client>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<IAuthorization, Authorization>();

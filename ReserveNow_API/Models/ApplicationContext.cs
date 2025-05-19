@@ -25,6 +25,7 @@ namespace ReserveNow_API.Models
         {
             optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=ReserveNow;Username=postgres;Password=1");
 
+
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -45,9 +46,10 @@ namespace ReserveNow_API.Models
 
             // Остальные связи остаются без изменений
             modelBuilder.Entity<Table>()
-                .HasOne(t => t.Restaurant)
-                .WithMany(r => r.Tables)
-                .HasForeignKey(t => t.RestaurantId);
+        .HasOne(t => t.Restaurant)
+        .WithMany(r => r.Tables)
+        .HasForeignKey(t => t.RestaurantId)
+        .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Reservation>()
                 .HasOne(r => r.Client)

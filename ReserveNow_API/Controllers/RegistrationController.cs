@@ -151,7 +151,8 @@ namespace ReserveNow_API.Controllers
             return Ok(new
             {
                 AccessToken = accessTokenString,
-                RefreshToken = refreshToken
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow
             });
         }
         [HttpGet("cities")]
@@ -168,6 +169,7 @@ namespace ReserveNow_API.Controllers
         }
 
         [HttpPost("refresh-token")]
+        [AllowAnonymous]
         public IActionResult RefreshToken([FromBody] RefreshTokenRequest request)
         {
             // Проверка refresh_token (например, из базы данных)
@@ -201,6 +203,20 @@ namespace ReserveNow_API.Controllers
             {
                 AccessToken = newAccessTokenString
             });
+        }
+        [HttpPost("validate")]
+        [AllowAnonymous]
+        public IActionResult ValidateRefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            // Проверка refresh_token (например, из базы данных)
+            var isValid = ValidateRefreshToken(request.RefreshToken);
+
+            if (isValid==null)
+            {
+                return Ok(new { value = false });
+            }
+
+            return Ok(new { value = true });
         }
         private void SaveRefreshToken(string email, string refreshToken)
         {
