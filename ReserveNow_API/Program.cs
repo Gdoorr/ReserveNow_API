@@ -57,7 +57,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 //builder.WebHost.UseUrls("http://0.0.0.0:5000");
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5000); // Прослушивать порт 5000 на всех интерфейсах
+    options.ListenAnyIP(5000);
+    options.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.UseHttps();
+    });// Прослушивать порт 5000 на всех интерфейсах
 });
 // Добавление CORS (пример)
 builder.Services.AddCors(options =>
@@ -92,7 +96,8 @@ if (app.Environment.IsDevelopment())
 }
 
 //app.UseMvcWithDefaultRoute(); // не требуется в данном случае
- // если нужен CORS
+// если нужен CORS
+app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthentication(); // !! Авторизация после маршрутизации

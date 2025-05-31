@@ -17,14 +17,16 @@ namespace ReserveNow_API.Controllers
     {
         public ApplicationContext _context;
         public IRestaurantService _rest;
-
-        public RestaurantsController(ApplicationContext context,IRestaurantService rest)
+        private readonly string _baseUrl;
+        public RestaurantsController(ApplicationContext context,IRestaurantService rest, IConfiguration configuration)
         {
             _context = context;
             _rest = rest;
+            _baseUrl = configuration["ServerSettings:BaseUrl"];
         }
 
         [HttpGet("list")]
+        
         public async Task<IActionResult> GetRestaurants()
         {
             var restaurants = await _context.Restaurants
@@ -39,7 +41,7 @@ namespace ReserveNow_API.Controllers
                 Address = r.Address,
                 Phone = r.Phone,
                 Description = r.Description,
-                ImageUrl = r.ImageUrl,
+                ImageUrl = string.IsNullOrEmpty(r.ImageUrl) ? null : $"{_baseUrl}{r.ImageUrl}",
                 Capacity = r.Capacity,
                 OpeningTime = r.OpeningTime,
                 ClosingTime = r.ClosingTime,
@@ -49,6 +51,7 @@ namespace ReserveNow_API.Controllers
             return Ok(restaurantDtos);
         }
         [HttpGet("{id}")]
+        
         public async Task<IActionResult> GetRestaurant(int id)
         {
             var restaurant = await _context.Restaurants
@@ -77,7 +80,75 @@ namespace ReserveNow_API.Controllers
             };
             return Ok(restaurant);
         }
+        [HttpPut("{id}")]
+        
+        public async Task<IActionResult> UpdateReservation(int id, [FromBody] ReservationRequest updatedReservation)
+        {
+            var existingReservation = await _context.Reservations.FindAsync(id);
+            if (existingReservation == null)
+            {
+                return NotFound("Reservation not found.");
+            }
+
+            // Обновляем данные брони
+            if (!DateTime.TryParseExact(updatedReservation.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+            {
+                return BadRequest("Invalid date format. Expected 'yyyy-MM-dd'.");
+            }
+
+            if (!TimeSpan.TryParseExact(updatedReservation.StartTime, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out var parsedStartTime))
+            {
+                return BadRequest("Invalid start time format. Expected 'hh:mm:ss'.");
+            }
+
+            if (!TimeSpan.TryParseExact(updatedReservation.EndTime, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out var parsedEndTime))
+            {
+                return BadRequest("Invalid end time format. Expected 'hh:mm:ss'.");
+            }
+
+            // Обновляем данные брони
+            existingReservation.TableId = updatedReservation.TableId;
+            existingReservation.Date = parsedDate;
+            existingReservation.StartTime = parsedStartTime;
+            existingReservation.EndTime = parsedEndTime;
+            existingReservation.Guests = updatedReservation.Guests;
+
+            // Сохраняем изменения в базе данных
+            await _context.SaveChangesAsync();
+
+            return Ok(new ApiResponse { Message = "Reservation updated successfully." });
+        }
+        //[HttpGet("Reservetion/{id}")]
+        //public async Task<IActionResult> GetRestaurantReservetion(int UserId,string RestaurantName,string RestaurantCity)
+        //{
+        //    var restaurant = await _context.Restaurants
+        //        .Include(r => r.Tables)
+        //        .FirstOrDefaultAsync(r => r.ID == id);
+
+        //    if (restaurant == null)
+        //    {
+        //        return NotFound("Restaurant not found");
+        //    }
+        //    var restaurantDto = new RestaurantModel
+        //    {
+        //        ID = restaurant.ID,
+        //        Name = restaurant.Name,
+        //        Address = restaurant.Address,
+        //        Phone = restaurant.Phone,
+        //        Description = restaurant.Description,
+        //        OpeningTime = restaurant.OpeningTime,
+        //        ClosingTime = restaurant.ClosingTime,
+        //        Tables = restaurant.Tables.Select(t => new TableDto
+        //        {
+        //            ID = t.ID,
+        //            Capacity = t.Capacity,
+        //            IsAvailable = t.IsAvailable
+        //        }).ToList()
+        //    };
+        //    return Ok(restaurant);
+        //}
         [HttpGet("{id}/available-tables")]
+        
         public async Task<IActionResult> GetAvailableTables(
         int id,
         [FromQuery] DateTime date,
@@ -110,7 +181,37 @@ namespace ReserveNow_API.Controllers
         {
             return (startTime1 < endTime2 && startTime2 < endTime1);
         }
+        [HttpGet("check-availability")]
+        public async Task<IActionResult> CheckTableAvailability(
+    int restaurantId,
+    int tableId,
+    [FromQuery] DateTime date,
+    [FromQuery] TimeSpan startTime,
+    [FromQuery] TimeSpan endTime,
+    [FromQuery] int guests,
+    [FromQuery] int? currentReservationId = null) // ID текущей брони
+        {
+            var existingReservation = await _context.Reservations
+                .FirstOrDefaultAsync(r =>
+                    r.RestaurantId == restaurantId &&
+                    r.TableId == tableId &&
+                    r.Date == date &&
+                    (
+                        (r.StartTime < endTime && r.EndTime > startTime) ||
+                        (r.StartTime < endTime && r.EndTime >= endTime)
+                    ) &&
+                    r.ID != currentReservationId // Исключаем текущую бронь
+                );
+
+            if (existingReservation != null)
+            {
+                return Ok(false); // Стол занят
+            }
+
+            return Ok(true); // Стол свободен
+        }
         [HttpPost("reserve")]
+        
         public async Task<IActionResult> ReserveTable([FromBody] ReservationRequest request)
         {
             if (request == null || request.TableId <= 0 || request.Guests <= 0)
@@ -137,7 +238,11 @@ namespace ReserveNow_API.Controllers
             {
                 return BadRequest("Invalid time format. Expected 'hh:mm:ss'.");
             }
-
+            var canCreate = await CanCreateReservation(request.UserId, request.RestaurantId, parsedDate);
+            if (!canCreate)
+            {
+                return Conflict("You have reached the maximum number of reservations for this restaurant on this date.");
+            }
             // Проверяем, существует ли уже бронь для этого пользователя, ресторана и столика
             var existingReservation = await _context.Reservations
                 .FirstOrDefaultAsync(r =>
@@ -175,7 +280,45 @@ namespace ReserveNow_API.Controllers
             // Возвращаем JSON-ответ
             return Ok(new ApiResponse { Message = "Reservation created successfully" });
         }
+        [HttpGet("history/{userId}")]
+        
+        public async Task<IActionResult> GetReservationsHistory(int userId)
+        {
+            try
+            {
+                // Текущая дата и время в UTC
+                var nowUtc = DateTime.UtcNow;
+
+                // Получаем все брони пользователя с присоединением данных ресторана
+                var reservations = await _context.Reservations
+                    .Where(r => r.UserId == userId)
+                    .Join(
+                        _context.Restaurants,
+                        reservation => reservation.RestaurantId,
+                        restaurant => restaurant.ID,
+                        (reservation, restaurant) => new ReservationRequest
+                        {
+                            ID = reservation.ID,
+                            RestaurantId = reservation.RestaurantId,
+                            RestaurantName = restaurant.Name,
+                            RestaurantCity = restaurant.City.Name,
+                            TableId = reservation.TableId,
+                            Date = reservation.Date.ToString("yyyy-MM-dd"),
+                            StartTime = reservation.StartTime.ToString(@"hh\:mm\:ss"),
+                            EndTime = reservation.EndTime.ToString(@"hh\:mm\:ss"),
+                            Guests = reservation.Guests
+                        })
+                    .ToListAsync();
+
+                return Ok(reservations);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = $"Internal server error: {ex.Message}" });
+            }
+        }
         [HttpGet("user/{userId}")]
+        
         public async Task<IActionResult> GetUserReservations(int userId)
         {
             try
@@ -183,52 +326,39 @@ namespace ReserveNow_API.Controllers
                 // Текущая дата и время в UTC
                 var nowUtc = DateTime.UtcNow;
 
-                // Получаем все брони пользователя
-                var reservations = await _context.Reservations
-            .Where(r => r.UserId == userId)
-            .Join(
-                _context.Restaurants,
-                reservation => reservation.RestaurantId,
-                restaurant => restaurant.ID,
-                (reservation, restaurant) => new ReservationRequest
-                {
-                    ID = reservation.ID,
-                    RestaurantId = reservation.RestaurantId,
-                    RestaurantName = restaurant.Name,
-                    RestaurantCity = restaurant.City.Name,
-                    TableId = reservation.TableId,
-                    Date = reservation.Date.ToString("yyyy-MM-dd"), // Преобразуем в строку
-                    StartTime = reservation.StartTime.ToString(@"hh\:mm\:ss"), // Преобразуем в строку
-                    EndTime = reservation.EndTime.ToString(@"hh\:mm\:ss"),
-                    Guests = reservation.Guests
-                })
-            .ToListAsync();
-
-                // Фильтруем истекшие брони
-                var now = DateTime.UtcNow;
-                var activeReservations = new List<ReservationRequest>();
-                foreach (var r in reservations)
-                {
-                    if (DateTime.TryParse(r.Date, out var parsedDate) &&
-                        TimeSpan.TryParse(r.EndTime, out var parsedEndTime))
-                    {
-                        if (parsedDate > now.Date ||
-                            (parsedDate == now.Date && parsedEndTime > now.TimeOfDay))
+                // Фильтруем брони в базе данных
+                var activeReservations = await _context.Reservations
+                    .Where(r => r.UserId == userId &&
+                                r.Date >= nowUtc.Date && // Бронь не старше текущей даты
+                                (r.Date > nowUtc.Date || r.EndTime > nowUtc.TimeOfDay)) // Бронь еще не истекла
+                    .Join(
+                        _context.Restaurants,
+                        reservation => reservation.RestaurantId,
+                        restaurant => restaurant.ID,
+                        (reservation, restaurant) => new ReservationRequest
                         {
-                            activeReservations.Add(r);
-                        }
-                    }
-                }
+                            ID = reservation.ID,
+                            RestaurantId = reservation.RestaurantId,
+                            RestaurantName = restaurant.Name,
+                            RestaurantCity = restaurant.City.Name,
+                            TableId = reservation.TableId,
+                            Date = reservation.Date.ToString("yyyy-MM-dd"),
+                            StartTime = reservation.StartTime.ToString(@"hh\:mm\:ss"),
+                            EndTime = reservation.EndTime.ToString(@"hh\:mm\:ss"),
+                            Guests = reservation.Guests
+                        })
+                    .ToListAsync();
 
-                // Удаляем истекшие брони из базы данных
-                var expiredReservations = reservations.Except(activeReservations).ToList();
+                // Удаляем брони старше полугода
+                var sixMonthsAgo = nowUtc.AddMonths(-6);
+                var expiredReservations = await _context.Reservations
+                    .Where(r => r.UserId == userId &&
+                                r.Date < sixMonthsAgo) // Брони старше полугода
+                    .ToListAsync();
+
                 if (expiredReservations.Any())
                 {
-                    var expiredReservationIds = expiredReservations.Select(r => r.ID);
-                    var reservationsToDelete = await _context.Reservations
-                        .Where(r => expiredReservationIds.Contains(r.ID))
-                        .ToListAsync();
-                    _context.Reservations.RemoveRange(reservationsToDelete);
+                    _context.Reservations.RemoveRange(expiredReservations);
                     await _context.SaveChangesAsync();
                 }
 
@@ -238,6 +368,108 @@ namespace ReserveNow_API.Controllers
             {
                 return StatusCode(500, new { Message = $"Internal server error: {ex.Message}" });
             }
+        }
+        private string HashPassword(string password)
+        {
+            // Простой пример хеширования пароля (в реальном проекте используйте более надежные методы)
+            return BCrypt.Net.BCrypt.HashPassword(password);
+        }
+        [HttpPut("users/{id}")]
+        
+        public async Task<IActionResult> UpdateClient(int id, [FromBody] Client updatedClient)
+        {
+            try
+            {
+                // Ищем пользователя в базе данных
+                var client = await _context.Client.FindAsync(id);
+                if (client == null)
+                {
+                    return NotFound("User not found.");
+                }
+
+                // Обновляем данные пользователя
+                client.Name = updatedClient.Name;
+                client.Email = updatedClient.Email;
+                client.Phone = updatedClient.Phone;
+                client.Password = HashPassword(updatedClient.Password); // Хэшируйте пароль перед сохранением
+                client.CityId = updatedClient.CityId;
+
+                // Сохраняем изменения
+                await _context.SaveChangesAsync();
+
+                return Ok(new { Message = "Profile updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = $"Internal server error: {ex.Message}" });
+            }
+        }
+        [HttpPut("update")]
+        
+        public async Task<IActionResult> UpdateReservation([FromBody] Reservation updatedReservation)
+        {
+            var existingReservation = await _context.Reservations.FindAsync(updatedReservation.ID);
+            if (existingReservation == null)
+            {
+                return NotFound("Reservation not found.");
+            }
+
+            existingReservation.Guests = updatedReservation.Guests;
+            existingReservation.Date = updatedReservation.Date;
+            existingReservation.StartTime = updatedReservation.StartTime;
+            existingReservation.EndTime = updatedReservation.EndTime;
+
+            await _context.SaveChangesAsync();
+            return Ok(new ApiResponse { Message = "Reservation updated successfully." });
+        }
+
+        [HttpDelete("delete/{id}")]
+        
+        public async Task<IActionResult> DeleteReservation(int id)
+        {
+            var reservation = await _context.Reservations.FindAsync(id);
+            if (reservation == null)
+            {
+                return NotFound("Reservation not found.");
+            }
+
+            _context.Reservations.Remove(reservation);
+            await _context.SaveChangesAsync();
+            return Ok(new ApiResponse { Message = "Reservation deleted successfully." });
+        }
+        [HttpGet("restaurants/{restaurantId}/working-hours")]
+        public async Task<IActionResult> GetRestaurantWorkingHours(int restaurantId)
+        {
+            var restaurant = await _context.Restaurants.FindAsync(restaurantId);
+            if (restaurant == null)
+            {
+                return NotFound("Restaurant not found.");
+            }
+
+            var workingHours = new
+            {
+                OpenTime = restaurant.OpeningTime.ToString(@"hh\:mm"),
+                CloseTime = restaurant.ClosingTime.ToString(@"hh\:mm")
+            };
+
+            return Ok(workingHours);
+        }
+        private async Task<bool> CanCreateReservation(int userId, int restaurantId, DateTime date)
+        {
+            // Проверяем количество активных броней пользователя в ресторане за день
+            var activeReservations = await _context.Reservations
+                .Where(r => r.UserId == userId &&
+                            r.RestaurantId == restaurantId &&
+                            r.Date == date &&
+                            r.Status != "Cancelled") // Исключаем отмененные брони
+                .ToListAsync();
+
+            if (activeReservations.Count >= 3) // Лимит: 3 брони на день
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

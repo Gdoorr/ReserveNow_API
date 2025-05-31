@@ -13,5 +13,6 @@
         public TimeSpan ClosingTime { get; set; }
         public string City { get; set; }
         public List<TableDto> Tables { get; set; }
+
     }
 }

@@ -30,6 +30,18 @@
 
   <ItemGroup>
     <None Include="C:\Users\dania\Desktop\ReserveNow__API-master\ReserveNow_API\.editorconfig" />
+    <None Include="wwwroot\images\abc123_restaurant1.png" />
+    <None Include="wwwroot\images\BCD890_restaurant10.png" />
+    <None Include="wwwroot\images\def456_restaurant2.png" />
+    <None Include="wwwroot\images\EFG123_restaurant11.png" />
+    <None Include="wwwroot\images\ghi789_restaurant3.png" />
+    <None Include="wwwroot\images\HIJ456_restaurant12.png" />
+    <None Include="wwwroot\images\jkl012_restaurant4.png" />
+    <None Include="wwwroot\images\mno345_restaurant5.png" />
+    <None Include="wwwroot\images\pqr678_restaurant6.png" />
+    <None Include="wwwroot\images\stu901_restaurant7.png" />
+    <None Include="wwwroot\images\vwx234_restaurant8.png" />
+    <None Include="wwwroot\images\yzA567_restaurant9.png" />
   </ItemGroup>
 
 </Project>

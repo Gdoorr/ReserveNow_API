@@ -257,5 +257,27 @@ namespace ReserveNow_API.Controllers
 
             return tokenEntity.Email;
         }
+        public string GenerateJwtToken(string userId, string username, string role)
+        {
+            var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]));
+            var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+        new Claim(ClaimTypes.NameIdentifier, userId),
+        new Claim(ClaimTypes.Name, username),
+        new Claim(ClaimTypes.Role, role)
+    };
+
+            var token = new JwtSecurityToken(
+                issuer: "MyAuthServer",
+                audience: "MyAuthClient",
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(30), // Срок действия токена
+                signingCredentials: signingCredentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
     }
 }

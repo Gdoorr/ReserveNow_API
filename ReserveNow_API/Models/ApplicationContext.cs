@@ -45,36 +45,71 @@ namespace ReserveNow_API.Models
                 .HasForeignKey(r => r.CityId);
 
             // Остальные связи остаются без изменений
+            //    modelBuilder.Entity<Table>()
+            //.HasOne(t => t.Restaurant)
+            //.WithMany(r => r.Tables)
+            //.HasForeignKey(t => t.RestaurantId)
+            //.OnDelete(DeleteBehavior.Restrict);
+
+            //    modelBuilder.Entity<Reservation>()
+            //        .HasOne(r => r.Client)
+            //        .WithMany(u => u.Reservations)
+            //        .HasForeignKey(r => r.UserId);
+
+            //    modelBuilder.Entity<Reservation>()
+            //        .HasOne(r => r.Table)
+            //        .WithMany(t => t.Reservations)
+            //        .HasForeignKey(r => r.TableId);
+
+            //    modelBuilder.Entity<Review>()
+            //        .HasOne(r => r.Client)
+            //        .WithMany(u => u.Reviews)
+            //        .HasForeignKey(r => r.UserId);
+
+            //    modelBuilder.Entity<Review>()
+            //        .HasOne(r => r.Restaurant)
+            //        .WithMany(rest => rest.Reviews)
+            //        .HasForeignKey(r => r.RestaurantId);
+
+            //    modelBuilder.Entity<Menu>()
+            //        .HasOne(m => m.Restaurant)
+            //        .WithMany(r => r.Menus)
+            //        .HasForeignKey(m => m.RestaurantId);
+            modelBuilder.Entity<Client>()
+                .HasOne(c => c.City)
+                .WithMany(city => city.Clients)
+                .HasForeignKey(c => c.CityId)
+                .OnDelete(DeleteBehavior.Restrict); // Запрет каскадного удаления
+
+            modelBuilder.Entity<Restaurant>()
+                .HasOne(r => r.City)
+                .WithMany(city => city.Restaurants)
+                .HasForeignKey(r => r.CityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<Table>()
-        .HasOne(t => t.Restaurant)
-        .WithMany(r => r.Tables)
-        .HasForeignKey(t => t.RestaurantId)
-        .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(t => t.Restaurant)
+                .WithMany(r => r.Tables)
+                .HasForeignKey(t => t.RestaurantId)
+                .OnDelete(DeleteBehavior.Cascade); // Каскадное удаление при удалении ресторана
 
             modelBuilder.Entity<Reservation>()
                 .HasOne(r => r.Client)
-                .WithMany(u => u.Reservations)
-                .HasForeignKey(r => r.UserId);
+                .WithMany(c => c.Reservations)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.Restaurant)
+                .WithMany()
+                .HasForeignKey(r => r.RestaurantId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Reservation>()
                 .HasOne(r => r.Table)
                 .WithMany(t => t.Reservations)
-                .HasForeignKey(r => r.TableId);
-
-            modelBuilder.Entity<Review>()
-                .HasOne(r => r.Client)
-                .WithMany(u => u.Reviews)
-                .HasForeignKey(r => r.UserId);
-
-            modelBuilder.Entity<Review>()
-                .HasOne(r => r.Restaurant)
-                .WithMany(rest => rest.Reviews)
-                .HasForeignKey(r => r.RestaurantId);
-
-            modelBuilder.Entity<Menu>()
-                .HasOne(m => m.Restaurant)
-                .WithMany(r => r.Menus)
-                .HasForeignKey(m => m.RestaurantId);
+                .HasForeignKey(r => r.TableId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
